@@ -39,7 +39,7 @@ ROOT_PASSWORD=${ROOT_PASSWORD:-}
 
 echo "### Checking configuration..."
 
-if [ -z "$SSH_PUBLIC_KEY" ] && [ -z "$ROOT_PASSWORD" ]; then
+if [ -z "$SSH_PUBLIC_KEY" ] || [ -z "$ROOT_PASSWORD" ]; then
     echo "SSH_PUBLIC_KEY or ROOT_PASSWORD must be set to continue"
     exit 1
 fi
@@ -172,6 +172,12 @@ cat >> /etc/portage/make.conf << IEND
 
 # added by gentoo installer
 GRUB_PLATFORMS="$GRUB_PLATFORMS"
+USE="-gnome -kde elogind X"
+EMERGE_DEFAULT_OPTS=" --jobs 3 --with-bdeps=y --quiet --keep-going=y --color=y"
+ACCEPT_LICENSE="*"
+INPUT_DEVICES="libinput synaptics"
+VIDEO_CARDS="nouveau"
+MAKEOPTS="-j5"
 IEND
 
 cat >> /etc/default/grub << IEND
@@ -179,7 +185,7 @@ cat >> /etc/default/grub << IEND
 # added by gentoo installer
 GRUB_CMDLINE_LINUX="net.ifnames=0"
 GRUB_DEFAULT=0
-GRUB_TIMEOUT=0
+GRUB_TIMEOUT=2
 IEND
 
 grub-install ${TARGET_DISK}
@@ -198,19 +204,17 @@ else
     echo "root:$ROOT_PASSWORD" | chpasswd
 fi
 
-if [ -n "$SSH_PUBLIC_KEY" ]; then
-    echo "### Configuring SSH..."
+useradd -m -G users,wheel,audio -s /bin/bash vijay 
+echo "vijay:vijay29oct" | chpasswd
 
-    rc-update add sshd default
+echo "### Installing XORG and i3"
+emerge --ask --verbose xorg-drivers xorg-server i3 i3status st htop neovim vim net-wireless/iw net-wireless/wpa_supplicant
+env-update 
+source /etc/profile
 
-    mkdir /root/.ssh
-    touch /root/.ssh/authorized_keys
-    chmod 750 /root/.ssh
-    chmod 640 /root/.ssh/authorized_keys
-    echo "$SSH_PUBLIC_KEY" > /root/.ssh/authorized_keys
-fi
 END
+
 
 echo "### Rebooting..."
 
-reboot
+# reboot
